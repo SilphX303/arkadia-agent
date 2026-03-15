@@ -7,6 +7,7 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langchain_openai import ChatOpenAI
+from langchain_core.runnables import RunnableConfig
 
 from src.persona.system_prompt import SYSTEM_PROMPT
 
@@ -27,14 +28,20 @@ def create_llm(base_url: str, model: str) -> ChatOpenAI:
     )
 
 
-async def chat_node(state: AgentState, config: dict) -> dict:
-    """The main chat node — sends messages to vLLM with Arkadia's persona."""
-    llm = config["configurable"]["llm"]
+# Module-level LLM reference, set during startup
+_llm = None
 
+def set_llm(llm: ChatOpenAI):
+    global _llm
+    _llm = llm
+
+
+async def chat_node(state: AgentState, config: RunnableConfig) -> dict:
+    """The main chat node — sends messages to vLLM with Arkadia's persona."""
     messages = state["messages"]
     system_msg = {"role": "system", "content": SYSTEM_PROMPT}
 
-    response = await llm.ainvoke([system_msg] + messages)
+    response = await _llm.ainvoke([system_msg] + messages)
     return {"messages": [response]}
 
 
@@ -45,12 +52,3 @@ def build_graph(checkpointer=None):
     graph.add_edge(START, "chat")
     graph.add_edge("chat", END)
     return graph.compile(checkpointer=checkpointer)
-
-
-async def create_checkpointer(db_uri: str) -> AsyncPostgresSaver:
-    """Create and initialise the Postgres checkpointer."""
-    checkpointer = AsyncPostgresSaver.from_conn_string(db_uri)
-    async with checkpointer as cp:
-        await cp.setup()
-    # Return a fresh instance for the app to use
-    return AsyncPostgresSaver.from_conn_string(db_uri)
