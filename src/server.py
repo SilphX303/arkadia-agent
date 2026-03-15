@@ -2,11 +2,13 @@
 
 import os
 import json
+import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse, JSONResponse
 from langchain_core.messages import HumanMessage, AIMessage
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 from src.agent import build_graph, create_llm, set_llm
 
@@ -14,20 +16,28 @@ from src.agent import build_graph, create_llm, set_llm
 # Config from environment
 VLLM_URL = os.getenv("VLLM_URL", "http://10.0.26.11:8000/v1")
 VLLM_MODEL = os.getenv("VLLM_MODEL", "Qwen/Qwen3.5-27B")
+DB_URI = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@10.0.26.11:5432/arkadia_agent")
 
 graph = None
+checkpointer_cm = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Start up: build graph and LLM client."""
-    global graph
+    global graph, checkpointer_cm
 
     llm = create_llm(VLLM_URL, VLLM_MODEL)
     set_llm(llm)
-    graph = build_graph()
+
+    checkpointer_cm = AsyncPostgresSaver.from_conn_string(DB_URI)
+    checkpointer = await checkpointer_cm.__aenter__()
+    await checkpointer.setup()
+    graph = build_graph(checkpointer=checkpointer)
 
     yield
+
+    await checkpointer_cm.__aexit__(None, None, None)
 
 
 app = FastAPI(title="Arkadia", lifespan=lifespan)
@@ -61,7 +71,17 @@ async def chat_completions(request: Request):
             messages.append(AIMessage(content=msg["content"]))
 
     stream = body.get("stream", False)
-    config = {"configurable": {"thread_id": "stateless"}}
+
+    # If client sends full history (like Open WebUI), use a unique thread
+    # so the checkpointer doesn't replay old messages on top.
+    # If client sends a thread_id, they're managing state themselves
+    # and expect the checkpointer to provide continuity.
+    thread_id = body.get("thread_id", None)
+    if thread_id is None:
+        # Stateless mode: full history from client, unique thread per request
+        thread_id = f"ephemeral-{uuid.uuid4().hex[:12]}"
+
+    config = {"configurable": {"thread_id": thread_id}}
 
     if stream:
         return StreamingResponse(
