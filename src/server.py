@@ -7,7 +7,6 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse, JSONResponse
 from langchain_core.messages import HumanMessage, AIMessage
-from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 from src.agent import build_graph, create_llm, set_llm
 
@@ -15,28 +14,20 @@ from src.agent import build_graph, create_llm, set_llm
 # Config from environment
 VLLM_URL = os.getenv("VLLM_URL", "http://10.0.26.11:8000/v1")
 VLLM_MODEL = os.getenv("VLLM_MODEL", "Qwen/Qwen3.5-27B")
-DB_URI = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@10.0.26.11:5432/arkadia_agent")
 
 graph = None
-checkpointer_cm = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Start up: build graph and LLM client."""
-    global graph, checkpointer_cm
+    global graph
 
     llm = create_llm(VLLM_URL, VLLM_MODEL)
     set_llm(llm)
-
-    checkpointer_cm = AsyncPostgresSaver.from_conn_string(DB_URI)
-    checkpointer = await checkpointer_cm.__aenter__()
-    await checkpointer.setup()
-    graph = build_graph(checkpointer=checkpointer)
+    graph = build_graph()
 
     yield
-
-    await checkpointer_cm.__aexit__(None, None, None)
 
 
 app = FastAPI(title="Arkadia", lifespan=lifespan)
@@ -69,14 +60,8 @@ async def chat_completions(request: Request):
         elif msg["role"] == "assistant":
             messages.append(AIMessage(content=msg["content"]))
 
-    thread_id = body.get("thread_id", "default")
     stream = body.get("stream", False)
-
-    config = {
-        "configurable": {
-            "thread_id": thread_id,
-        }
-    }
+    config = {"configurable": {"thread_id": "stateless"}}
 
     if stream:
         return StreamingResponse(
