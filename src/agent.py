@@ -31,7 +31,6 @@ async def chat_node(state: AgentState, config: dict) -> dict:
     """The main chat node — sends messages to vLLM with Arkadia's persona."""
     llm = config["configurable"]["llm"]
 
-    # Inject system prompt as the first message if not present
     messages = state["messages"]
     system_msg = {"role": "system", "content": SYSTEM_PROMPT}
 
@@ -39,22 +38,19 @@ async def chat_node(state: AgentState, config: dict) -> dict:
     return {"messages": [response]}
 
 
-def build_graph():
+def build_graph(checkpointer=None):
     """Build Arkadia's agent graph."""
     graph = StateGraph(AgentState)
     graph.add_node("chat", chat_node)
     graph.add_edge(START, "chat")
     graph.add_edge("chat", END)
-    return graph.compile()
-
-
-async def build_graph_with_memory(db_uri: str):
-    """Build the graph with PostgreSQL-backed conversation memory."""
-    checkpointer = AsyncPostgresSaver.from_conn_string(db_uri)
-    await checkpointer.setup()
-
-    graph = StateGraph(AgentState)
-    graph.add_node("chat", chat_node)
-    graph.add_edge(START, "chat")
-    graph.add_edge("chat", END)
     return graph.compile(checkpointer=checkpointer)
+
+
+async def create_checkpointer(db_uri: str) -> AsyncPostgresSaver:
+    """Create and initialise the Postgres checkpointer."""
+    checkpointer = AsyncPostgresSaver.from_conn_string(db_uri)
+    async with checkpointer as cp:
+        await cp.setup()
+    # Return a fresh instance for the app to use
+    return AsyncPostgresSaver.from_conn_string(db_uri)

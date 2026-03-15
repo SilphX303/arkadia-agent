@@ -2,14 +2,14 @@
 
 import os
 import json
-import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse, JSONResponse
 from langchain_core.messages import HumanMessage, AIMessage
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
-from src.agent import build_graph_with_memory, create_llm
+from src.agent import build_graph, create_llm
 
 
 # Config from environment
@@ -19,15 +19,23 @@ DB_URI = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@10.0.26.11:54
 
 graph = None
 llm = None
+checkpointer_cm = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Start up: build graph and LLM client."""
-    global graph, llm
+    global graph, llm, checkpointer_cm
     llm = create_llm(VLLM_URL, VLLM_MODEL)
-    graph = await build_graph_with_memory(DB_URI)
+
+    checkpointer_cm = AsyncPostgresSaver.from_conn_string(DB_URI)
+    checkpointer = await checkpointer_cm.__aenter__()
+    await checkpointer.setup()
+    graph = build_graph(checkpointer=checkpointer)
+
     yield
+
+    await checkpointer_cm.__aexit__(None, None, None)
 
 
 app = FastAPI(title="Arkadia", lifespan=lifespan)
@@ -53,7 +61,6 @@ async def chat_completions(request: Request):
     """OpenAI-compatible chat completions endpoint."""
     body = await request.json()
 
-    # Extract messages from OpenAI format
     messages = []
     for msg in body.get("messages", []):
         if msg["role"] == "user":
@@ -61,7 +68,6 @@ async def chat_completions(request: Request):
         elif msg["role"] == "assistant":
             messages.append(AIMessage(content=msg["content"]))
 
-    # Use thread_id for conversation persistence
     thread_id = body.get("thread_id", "default")
     stream = body.get("stream", False)
 
