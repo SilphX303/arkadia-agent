@@ -1,4 +1,4 @@
-"""Arkadia's LangGraph agent — router + domain nodes + persona chat."""
+"""Arkadia's LangGraph agent — router + domain nodes + memory + persona chat."""
 
 import json
 from typing import Annotated
@@ -13,6 +13,7 @@ from langchain_core.runnables import RunnableConfig
 from src.persona.system_prompt import SYSTEM_PROMPT
 from src.router import route_message
 from src.mcp_client import get_mcp_tools, call_mcp_tool
+from src.memory.client import retrieve_memories, store_memory
 
 
 class AgentState(TypedDict):
@@ -20,6 +21,11 @@ class AgentState(TypedDict):
     messages: Annotated[list, add_messages]
     domains: list[str]
     tool_results: list[str]
+    memories: list[str]
+
+
+_llm = None
+
 
 def create_llm(base_url: str, model: str) -> ChatOpenAI:
     """Create the LLM client pointing at vLLM."""
@@ -38,8 +44,6 @@ def create_llm(base_url: str, model: str) -> ChatOpenAI:
         },
     )
 
-_llm = None
-
 
 def set_llm(llm: ChatOpenAI):
     global _llm
@@ -51,7 +55,15 @@ async def router_node(state: AgentState, config: RunnableConfig) -> dict:
     last_message = state["messages"][-1]
     content = last_message.content if hasattr(last_message, "content") else str(last_message)
     domains = await route_message(content, _llm)
-    return {"domains": domains, "tool_results": []}
+    return {"domains": domains, "tool_results": [], "memories": []}
+
+
+async def memory_node(state: AgentState, config: RunnableConfig) -> dict:
+    """Retrieve relevant memories based on the user's message."""
+    last_message = state["messages"][-1]
+    content = last_message.content if hasattr(last_message, "content") else str(last_message)
+    memories = await retrieve_memories(content)
+    return {"memories": memories}
 
 
 async def domain_node(state: AgentState, config: RunnableConfig) -> dict:
@@ -96,8 +108,18 @@ async def chat_node(state: AgentState, config: RunnableConfig) -> dict:
     """Generate the final response with Arkadia's persona."""
     messages = list(state["messages"])
     tool_results = state.get("tool_results", [])
+    memories = state.get("memories", [])
 
     system_content = SYSTEM_PROMPT
+
+    if memories:
+        system_content += (
+            "\n\n## Your memories of Steve\n"
+            "These are things you remember from past conversations. "
+            "Use them naturally — don't announce that you're remembering something.\n\n"
+            + "\n".join(f"- {m}" for m in memories)
+        )
+
     if tool_results:
         system_content += (
             "\n\n## Tool results from this turn\n"
@@ -110,6 +132,16 @@ async def chat_node(state: AgentState, config: RunnableConfig) -> dict:
 
     system_msg = SystemMessage(content=system_content)
     response = await _llm.ainvoke([system_msg] + messages)
+
+    # Store this interaction as a memory
+    last_message = messages[-1] if messages else None
+    if last_message:
+        user_content = last_message.content if hasattr(last_message, "content") else str(last_message)
+        await store_memory(
+            f"Steve said: {user_content}\nArkadia responded: {response.content[:500]}",
+            sector="episodic",
+        )
+
     return {"messages": [response]}
 
 
@@ -126,11 +158,13 @@ def build_graph(checkpointer=None):
     graph = StateGraph(AgentState)
 
     graph.add_node("router", router_node)
+    graph.add_node("memory", memory_node)
     graph.add_node("domain", domain_node)
     graph.add_node("chat", chat_node)
 
     graph.add_edge(START, "router")
-    graph.add_conditional_edges("router", should_use_tools, {"domain": "domain", "chat": "chat"})
+    graph.add_edge("router", "memory")
+    graph.add_conditional_edges("memory", should_use_tools, {"domain": "domain", "chat": "chat"})
     graph.add_edge("domain", "chat")
     graph.add_edge("chat", END)
 
