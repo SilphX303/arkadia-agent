@@ -21,6 +21,22 @@ class AgentState(TypedDict):
     domains: list[str]
     tool_results: list[str]
 
+def create_llm(base_url: str, model: str) -> ChatOpenAI:
+    """Create the LLM client pointing at vLLM."""
+    return ChatOpenAI(
+        openai_api_base=base_url,
+        openai_api_key="not-needed",
+        model_name=model,
+        temperature=0.7,
+        streaming=True,
+        model_kwargs={
+            "extra_body": {
+                "chat_template_kwargs": {
+                    "enable_thinking": False
+                }
+            }
+        },
+    )
 
 _llm = None
 
