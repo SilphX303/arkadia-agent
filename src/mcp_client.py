@@ -98,15 +98,3 @@ def _extract_result(result) -> str:
                 parts.append(block.text)
         return "\n".join(parts) if parts else str(result)
     return str(result)
-```
-
-We also need to add the `mcp` package to `requirements.txt`. Update it to:
-```
-langgraph>=1.1.0
-langchain-openai>=0.3.0
-langgraph-checkpoint-postgres>=3.0.0
-psycopg[binary]>=3.0.0
-fastapi>=0.115.0
-uvicorn[standard]>=0.34.0
-httpx>=0.28.0
-mcp>=1.0.0
