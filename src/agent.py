@@ -1,5 +1,6 @@
 """Arkadia's LangGraph agent — router + domain nodes + memory + persona chat."""
 
+import asyncio
 import json
 from typing import Annotated
 from typing_extensions import TypedDict
@@ -133,14 +134,14 @@ async def chat_node(state: AgentState, config: RunnableConfig) -> dict:
     system_msg = SystemMessage(content=system_content)
     response = await _llm.ainvoke([system_msg] + messages)
 
-    # Store this interaction as a memory
+    # Store this interaction as a memory (fire and forget)
     last_message = messages[-1] if messages else None
     if last_message:
         user_content = last_message.content if hasattr(last_message, "content") else str(last_message)
-        await store_memory(
+        asyncio.create_task(store_memory(
             f"Steve said: {user_content}\nArkadia responded: {response.content[:500]}",
-            sector="episodic",
-        )
+            node="observe",
+        ))
 
     return {"messages": [response]}
 
