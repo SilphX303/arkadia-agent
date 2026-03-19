@@ -72,13 +72,8 @@ async def chat_completions(request: Request):
 
     stream = body.get("stream", False)
 
-    # If client sends full history (like Open WebUI), use a unique thread
-    # so the checkpointer doesn't replay old messages on top.
-    # If client sends a thread_id, they're managing state themselves
-    # and expect the checkpointer to provide continuity.
     thread_id = body.get("thread_id", None)
     if thread_id is None:
-        # Stateless mode: full history from client, unique thread per request
         thread_id = f"ephemeral-{uuid.uuid4().hex[:12]}"
 
     config = {"configurable": {"thread_id": thread_id}}
@@ -89,7 +84,10 @@ async def chat_completions(request: Request):
             media_type="text/event-stream",
         )
     else:
-        result = await graph.ainvoke({"messages": messages, "domains": [], "tool_results": []}, config=config)
+        result = await graph.ainvoke(
+            {"messages": messages, "domains": [], "tool_results": [], "memories": []},
+            config=config,
+        )
         content = result["messages"][-1].content
         return JSONResponse({
             "id": "chatcmpl-arkadia",
@@ -108,7 +106,9 @@ async def chat_completions(request: Request):
 async def stream_response(messages: list, config: dict):
     """Stream tokens back in OpenAI SSE format."""
     async for event in graph.astream_events(
-        {"messages": messages, "domains": [], "tool_results": []}, config=config, version="v2"
+        {"messages": messages, "domains": [], "tool_results": [], "memories": []},
+        config=config,
+        version="v2",
     ):
         if event["event"] == "on_chat_model_stream":
             node = event.get("metadata", {}).get("langgraph_node", "")
