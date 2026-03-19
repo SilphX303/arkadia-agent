@@ -89,7 +89,7 @@ async def chat_completions(request: Request):
             media_type="text/event-stream",
         )
     else:
-        result = await graph.ainvoke({"messages": messages}, config=config)
+        result = await graph.ainvoke({"messages": messages, "domains": [], "tool_results": []}, config=config)
         content = result["messages"][-1].content
         return JSONResponse({
             "id": "chatcmpl-arkadia",
@@ -108,7 +108,7 @@ async def chat_completions(request: Request):
 async def stream_response(messages: list, config: dict):
     """Stream tokens back in OpenAI SSE format."""
     async for event in graph.astream_events(
-        {"messages": messages}, config=config, version="v2"
+        {"messages": messages, "domains": [], "tool_results": []}, config=config, version="v2"
     ):
         if event["event"] == "on_chat_model_stream":
             chunk = event["data"]["chunk"]
