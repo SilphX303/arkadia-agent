@@ -17,11 +17,10 @@ def _resolve_headers(headers: dict | None) -> dict | None:
         return None
     resolved = {}
     for key, value in headers.items():
-        if value.startswith("${") and value.endswith("}"):
-            env_name = value[2:-1]
-            resolved[key] = os.getenv(env_name, "")
-        else:
-            resolved[key] = value
+        import re
+        def replace_env(match):
+            return os.getenv(match.group(1), "")
+        resolved[key] = re.sub(r'\$\{(\w+)\}', replace_env, value)
     return resolved
 
 
