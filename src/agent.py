@@ -101,7 +101,9 @@ async def chat_node(state: AgentState, config: RunnableConfig) -> dict:
     if tool_results:
         system_content += (
             "\n\n## Tool results from this turn\n"
-            "Use these results to inform your response. "
+            "Use ONLY these results to inform your response. "
+            "NEVER invent, fabricate, or embellish data beyond what is provided here. "
+            "If the results are sparse, say so honestly — don't fill gaps with imagination. "
             "Summarise naturally — don't dump raw data.\n\n"
             + "\n".join(tool_results)
         )
