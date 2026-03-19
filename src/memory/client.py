@@ -14,34 +14,33 @@ async def retrieve_memories(query: str, limit: int = 10) -> list[str]:
                 f"{MEMORY_URL}/lgm/retrieve",
                 json={
                     "query": query,
+                    "node": "plan",
                     "namespace": "default",
                     "limit": limit,
                 },
             )
             if response.status_code == 200:
                 data = response.json()
-                memories = data.get("memories", data.get("results", []))
+                items = data.get("items", [])
                 return [
-                    m.get("text", m.get("content", str(m)))
-                    for m in memories
-                    if m
+                    item.get("content", str(item))
+                    for item in items
+                    if item
                 ]
     except Exception as e:
         print(f"[Memory] Retrieve failed: {e}")
     return []
 
 
-async def store_memory(content: str, sector: str = "episodic", metadata: dict = None) -> bool:
+async def store_memory(content: str, node: str = "observe", metadata: dict = None) -> bool:
     """Store a memory in OpenMemory."""
     try:
         async with httpx.AsyncClient(verify=False, timeout=10.0) as client:
             payload = {
                 "content": content,
-                "sector": sector,
+                "node": node,
                 "namespace": "default",
             }
-            if metadata:
-                payload["metadata"] = metadata
 
             response = await client.post(
                 f"{MEMORY_URL}/lgm/store",
