@@ -110,7 +110,7 @@ async def stream_response(messages: list, config: dict):
     async for event in graph.astream_events(
         {"messages": messages, "domains": [], "tool_results": []}, config=config, version="v2"
     ):
-        if event["event"] == "on_chat_model_stream":
+        if event["event"] == "on_chat_model_stream" and event.get("name") == "chat":
             chunk = event["data"]["chunk"]
             if hasattr(chunk, "content") and chunk.content:
                 data = {
