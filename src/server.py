@@ -110,8 +110,11 @@ async def stream_response(messages: list, config: dict):
     async for event in graph.astream_events(
         {"messages": messages, "domains": [], "tool_results": []}, config=config, version="v2"
     ):
-        if event["event"] == "on_chat_model_stream" and event.get("name") == "chat":
+        if event["event"] == "on_chat_model_stream":
+            node = event.get("metadata", {}).get("langgraph_node", "")
             chunk = event["data"]["chunk"]
+            if node != "chat":
+                continue
             if hasattr(chunk, "content") and chunk.content:
                 data = {
                     "id": "chatcmpl-arkadia",
