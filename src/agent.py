@@ -142,10 +142,16 @@ async def chat_node(state: AgentState, config: RunnableConfig) -> dict:
         skip_phrases = [
             "generate a concise",
             "### task:",
+            "### task",
+            "### guidelines",
+            "### output",
+            "### chat history",
             "follow_ups",
             "summarizing the chat",
-            "### output:",
             "json format:",
+            "broad tags",
+            "categorizing the main themes",
+            "chat_history",
         ]
         if not any(phrase in user_content.lower() for phrase in skip_phrases):
             task = asyncio.create_task(store_memory(
