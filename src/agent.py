@@ -135,13 +135,23 @@ async def chat_node(state: AgentState, config: RunnableConfig) -> dict:
     response = await _llm.ainvoke([system_msg] + messages)
 
     # Store this interaction as a memory (fire and forget)
+    # Filter out Open WebUI internal prompts (title gen, follow-ups, etc.)
     last_message = messages[-1] if messages else None
     if last_message:
         user_content = last_message.content if hasattr(last_message, "content") else str(last_message)
-        asyncio.create_task(store_memory(
-            f"Steve said: {user_content}\nArkadia responded: {response.content[:500]}",
-            node="observe",
-        ))
+        skip_phrases = [
+            "generate a concise",
+            "### task:",
+            "follow_ups",
+            "summarizing the chat",
+            "### output:",
+            "json format:",
+        ]
+        if not any(phrase in user_content.lower() for phrase in skip_phrases):
+            asyncio.create_task(store_memory(
+                f"Steve said: {user_content}\nArkadia responded: {response.content[:500]}",
+                node="observe",
+            ))
 
     return {"messages": [response]}
 
