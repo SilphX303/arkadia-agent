@@ -63,6 +63,24 @@ async def memory_node(state: AgentState, config: RunnableConfig) -> dict:
     """Retrieve relevant memories based on the user's message."""
     last_message = state["messages"][-1]
     content = last_message.content if hasattr(last_message, "content") else str(last_message)
+
+    skip_phrases = [
+        "generate a concise",
+        "### task:",
+        "### task",
+        "### guidelines",
+        "### output",
+        "### chat history",
+        "follow_ups",
+        "summarizing the chat",
+        "json format:",
+        "broad tags",
+        "categorizing the main themes",
+        "chat_history",
+    ]
+    if any(phrase in content.lower() for phrase in skip_phrases):
+        return {"memories": []}
+
     print(f"[Memory] Retrieving for: {content[:80]}")
     memories = await retrieve_memories(content)
     print(f"[Memory] Retrieved {len(memories)} memories")
