@@ -28,7 +28,7 @@ async def retrieve_memories(query: str, limit: int = 10) -> list[str]:
                     if item
                 ]
     except Exception as e:
-        print(f"[Memory] Retrieve failed: {e}")
+        print(f"[Memory] Retrieve failed: {type(e).__name__}: {e}")
     return []
 
 
@@ -48,5 +48,5 @@ async def store_memory(content: str, node: str = "observe", metadata: dict = Non
             )
             return response.status_code == 200
     except Exception as e:
-        print(f"[Memory] Store failed: {e}")
+        print(f"[Memory] Store failed: {type(e).__name__}: {e}")
     return False
