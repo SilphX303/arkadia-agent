@@ -26,7 +26,7 @@ class AgentState(TypedDict):
 
 
 _llm = None
-
+_background_tasks = set()
 
 def create_llm(base_url: str, model: str) -> ChatOpenAI:
     """Create the LLM client pointing at vLLM."""
@@ -148,10 +148,12 @@ async def chat_node(state: AgentState, config: RunnableConfig) -> dict:
             "json format:",
         ]
         if not any(phrase in user_content.lower() for phrase in skip_phrases):
-            asyncio.create_task(store_memory(
+            task = asyncio.create_task(store_memory(
                 f"Steve said: {user_content}\nArkadia responded: {response.content[:500]}",
                 node="observe",
             ))
+            _background_tasks.add(task)
+            task.add_done_callback(_background_tasks.discard)
 
     return {"messages": [response]}
 
