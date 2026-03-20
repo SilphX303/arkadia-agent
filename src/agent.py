@@ -63,9 +63,13 @@ async def memory_node(state: AgentState, config: RunnableConfig) -> dict:
     """Retrieve relevant memories based on the user's message."""
     last_message = state["messages"][-1]
     content = last_message.content if hasattr(last_message, "content") else str(last_message)
+    print(f"[Memory] Retrieving for: {content[:80]}")
     memories = await retrieve_memories(content)
+    print(f"[Memory] Retrieved {len(memories)} memories")
+    if memories:
+        for m in memories:
+            print(f"[Memory]   - {m[:80]}")
     return {"memories": memories}
-
 
 async def domain_node(state: AgentState, config: RunnableConfig) -> dict:
     """For each active domain, list tools, ask the LLM to pick one, execute it."""
