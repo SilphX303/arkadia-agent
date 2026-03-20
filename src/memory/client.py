@@ -9,7 +9,7 @@ MEMORY_URL = os.getenv("OPENMEMORY_URL", "https://memory.arkadia.network")
 async def retrieve_memories(query: str, limit: int = 10) -> list[str]:
     """Retrieve relevant memories based on a query."""
     try:
-        async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
+        async with httpx.AsyncClient(verify=False, timeout=10.0) as client:
             response = await client.post(
                 f"{MEMORY_URL}/lgm/retrieve",
                 json={
@@ -35,7 +35,7 @@ async def retrieve_memories(query: str, limit: int = 10) -> list[str]:
 async def store_memory(content: str, node: str = "observe", metadata: dict = None) -> bool:
     """Store a memory in OpenMemory."""
     try:
-        async with httpx.AsyncClient(verify=False, timeout=10.0) as client:
+        async with httpx.AsyncClient(verify=False, timeout=30.0) as client:
             payload = {
                 "content": content,
                 "node": node,
