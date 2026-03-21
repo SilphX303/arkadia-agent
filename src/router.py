@@ -14,6 +14,8 @@ Available domains:
 - "dns" — Pi-hole, DNS, ad blocking, network queries, domains
 - "infrastructure" — Proxmox, VMs, containers, cluster, servers, hardware
 - "automation" — N8N workflows, scheduled tasks, triggers
+- "storage" — TrueNAS, NAS, pools, datasets, ZFS, snapshots, disks, SMB, NFS shares
+- "deployment" — Coolify, deployments, containers, services, applications, environment variables
 - "general" — casual chat, questions, anything not matching above
 
 Rules:
