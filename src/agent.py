@@ -133,7 +133,10 @@ async def chat_node(state: AgentState, config: RunnableConfig) -> dict:
     tool_results = state.get("tool_results", [])
     memories = state.get("memories", [])
 
-    system_content = SYSTEM_PROMPT
+    from datetime import datetime
+        now = datetime.now()
+        time_context = now.strftime("It is %A, %d %B %Y, %H:%M %Z").strip()
+        system_content = SYSTEM_PROMPT + f"\n\n## Current date and time\n{time_context}\n"
 
     if memories:
         system_content += (
