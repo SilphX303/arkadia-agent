@@ -21,6 +21,16 @@ DOMAIN_CONFIG = {
         "mcp_url": "https://proxmox-mcp.arkadia.network/mcp",
         "transport": "streamable_http",
     },
+    "storage": {
+        "name": "TrueNAS",
+        "mcp_url": "https://truenas-mcp.arkadia.network/sse",
+        "transport": "sse",
+    },
+    "deployment": {
+        "name": "Coolify",
+        "mcp_url": "https://coolify-mcp.arkadia.network/mcp",
+        "transport": "streamable_http",
+    },
     "automation": {
         "name": "N8N",
         "mcp_url": "https://n8n.arkadia.network/mcp-server/http",
