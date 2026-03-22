@@ -23,7 +23,7 @@ DOMAIN_CONFIG = {
     },
     "storage": {
         "name": "TrueNAS",
-        "mcp_url": "https://truenas-mcp.arkadia.network/sse",
+        "mcp_url": "https://truenas-mcp.arkadia.network/mcp",
         "transport": "streamable_http",
     },
     "deployment": {
