@@ -22,9 +22,9 @@ DOMAIN_CONFIG = {
         "transport": "streamable_http",
     },
     "storage": {
-        "name": "TrueNAS",
-        "mcp_url": "https://truenas-mcp.arkadia.network/mcp",
-        "transport": "streamable_http",
+    "description": "TrueNAS storage: pools, datasets, snapshots, shares, disks, SMART health, alerts, replication, scrubs",
+    "mcp_url": "https://truenas-mcp.arkadia.network/mcp",
+    "transport": "streamable_http",
     },
     "deployment": {
         "name": "Coolify",
