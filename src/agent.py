@@ -35,8 +35,14 @@ def create_llm(base_url: str, model: str) -> ChatOpenAI:
         openai_api_base=base_url,
         openai_api_key="not-needed",
         model_name=model,
-        temperature=0.7,
+        temperature=1.0,
         streaming=True,
+        model_kwargs={
+            "top_p": 0.95,
+            "extra_body": {
+                "top_k": 64
+            }
+        },
     )
 
 
