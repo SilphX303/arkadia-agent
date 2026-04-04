@@ -37,13 +37,6 @@ def create_llm(base_url: str, model: str) -> ChatOpenAI:
         model_name=model,
         temperature=0.7,
         streaming=True,
-        model_kwargs={
-            "extra_body": {
-                "chat_template_kwargs": {
-                    "enable_thinking": False
-                }
-            }
-        },
     )
 
 
